@@ -644,6 +644,17 @@ core.registerPlugin('analytics', {
 core.start();
 
 module.exports = GecexCore;
+process.on('exit', (code) => {
+  console.log(`Process exiting with code: ${code}`);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 
 
