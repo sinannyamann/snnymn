@@ -7,13 +7,14 @@ const axios = require('axios');
 const { Octokit } = require('@octokit/rest');
 const ngrok = require('ngrok');
 const EventEmitter = require('events');
+const MongoStore = require('connect-mongo');
 require('dotenv').config();
 
 // Token'ların ortam değişkenlerinden alınması
 const {
-  SESSION_SECRET,
+  SESSION_SECRET = 'default-secret', // Fallback for development
   OPENAI_API_KEY,
-  DATABASE_URL,
+  MONGODB_URI,
   PGDATABASE,
   PGHOST,
   PGPORT,
@@ -26,6 +27,12 @@ const {
   GOOGLE_SEARCH_ENGINE_ID,
   NGROK_AUTH_TOKEN
 } = process.env;
+
+// Kritik ortam değişkenlerini doğrula
+if (!MONGODB_URI || !SESSION_SECRET || !OPENAI_API_KEY) {
+  console.error('Missing required environment variables: MONGODB_URI, SESSION_SECRET, OPENAI_API_KEY');
+  process.exit(1);
+}
 
 // MongoDB Şema Tanımları
 const chatSchema = new mongoose.Schema({
@@ -46,7 +53,7 @@ class GecexCore extends EventEmitter {
     this.services = new Map();
     this.middleware = [];
     this.config = {
-      port: process.env.PORT || 4000,
+      port: process.env.PORT || 4000, // Railway PORT değişkenini kullanır
       environment: process.env.NODE_ENV || 'production',
       logLevel: process.env.LOG_LEVEL || 'info',
       enableMetrics: true,
@@ -83,8 +90,13 @@ class GecexCore extends EventEmitter {
 
   async setupDatabase() {
     try {
+      // MONGODB_URI doğrulaması
+      if (!MONGODB_URI.startsWith('mongodb://') && !MONGODB_URI.startsWith('mongodb+srv://')) {
+        throw new Error('MONGODB_URI must start with "mongodb://" or "mongodb+srv://"');
+      }
+
       // MongoDB Bağlantısı
-      await mongoose.connect(DATABASE_URL, {
+      await mongoose.connect(MONGODB_URI, {
         useNewUrlParser: true,
         useUnifiedTopology: true
       });
@@ -114,7 +126,12 @@ class GecexCore extends EventEmitter {
     this.app.use(require('express-session')({
       secret: SESSION_SECRET,
       resave: false,
-      saveUninitialized: false
+      saveUninitialized: false,
+      store: MongoStore.create({
+        mongoUrl: MONGODB_URI,
+        collectionName: 'sessions'
+      }),
+      cookie: { maxAge: 1000 * 60 * 60 * 24 } // 1 day
     }));
 
     // İstek izleme middleware'i
