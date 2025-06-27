@@ -46,7 +46,7 @@ class GecexCore extends EventEmitter {
     this.services = new Map();
     this.middleware = [];
     this.config = {
-      port: process.env.PORT || 4000, // Railway PORT değişkenini kullanır
+      port: process.env.PORT || 4000,
       environment: process.env.NODE_ENV || 'production',
       logLevel: process.env.LOG_LEVEL || 'info',
       enableMetrics: true,
@@ -655,6 +655,3 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
-
-
-
